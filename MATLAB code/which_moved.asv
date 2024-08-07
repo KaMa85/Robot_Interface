@@ -1,0 +1,74 @@
+function points=which_moved(distinctPaths_in_function,num_of_distinct_paths, modified_path)
+    % Split the string into individual coordinate strings
+    
+    
+    coordStrings = strsplit(modified_path, ') ');
+    coordStrings = coordStrings (1:end-1); % Remove the last empty element
+    % Initialize coordinate vectors
+    x_m_p = zeros(length(coordStrings),1);
+    y_m_p = zeros(length(coordStrings),1);
+    z_m_p = zeros(length(coordStrings),1);
+    
+    % Parse each coordinate string
+    for i = 1:length(coordStrings)
+        coordString = coordStrings{i};
+        coordString = strrep(coordString, '(', '');
+        coordString = strrep(coordString, ')', '');
+        coords = str2num(coordString); % Convert string to numbers
+        x_m_p(i) = coords(3);
+        y_m_p(i) = -coords(1);
+        z_m_p(i) = coords(2);
+    end
+    modified_path_vec=[x_m_p,y_m_p,z_m_p];
+    % Check if inputs are of the same size
+    if ~isequal(size(modified_path_vec), size(distinctPaths_in_function))
+        error('The size of "modified_path_vec" and "distinctPaths_in_function" must be the same.');
+    end
+    
+    % Check if their row count is a multiple of "num_of_distinct_paths"
+    numRows = size(modified_path_vec, 1);
+    if mod(numRows, num_of_distinct_paths) ~= 0
+        error('"num_of_distinct_paths" must be a divisor of the number of rows in "modified_path_vec" and "distinctPaths_in_function".');
+    end
+    
+    % Calculate the size for the rearranged arrays
+    newSize = numRows / num_of_distinct_paths;
+    
+    % Preallocate arrays for the output
+    modifiedPathArray = zeros(newSize, 3, num_of_distinct_paths);
+    distinctPathArray = zeros(newSize, 3, num_of_distinct_paths);
+    
+    % Fill in the output arrays
+    for i = 1:num_of_distinct_paths
+        startIndex = (i - 1) * newSize + 1;
+        endIndex = i * newSize;
+        modifiedPathArray(:, :, i) = modified_path_vec(startIndex:endIndex, :);
+        distinctPathArray(:, :, i) = distinctPaths_in_function(startIndex:endIndex, :);
+    end
+    % Assuming modifiedPathArray and distinctPathArray have been defined and populated as before
+
+    tolerance = 0.0005;
+    iNotEqual = []; % To store the index where arrays differ
+    differencesCount = []; % To keep track of differences for each i
+    
+    for i = 1:num_of_distinct_paths
+        % Calculate the difference between the arrays
+        difference = abs(modifiedPathArray(:, :, i) - distinctPathArray(:, :, i));
+        
+        % Check if the difference exceeds tolerance
+        if any(difference > tolerance, 'all')
+            differencesCount(i) = sum(difference > tolerance, 'all'); %#ok<AGROW> % Count differences
+            iNotEqual(end+1) = i; %#ok<AGROW> % Append the index where difference exceeds tolerance
+        else
+            differencesCount(i) = 0; %#ok<AGROW> % No significant difference
+        end
+    end
+    
+    % Check for the unique i where differences are within the expected range
+    if length(iNotEqual) > 1
+        error('More than one "i" for which arrays differ beyond the specified tolerance.');
+    elseif isempty(iNotEqual)
+        error('No "i" found where arrays differ within the specified tolerance.');
+    end
+    points=distinctPathArray(:,:,i);
+end
